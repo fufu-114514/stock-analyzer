@@ -2,7 +2,8 @@
 
 全栈应用：输入股票代码 → 获取行情数据 → LLM 智能分析 → 存入 Supabase。
 
-**在线访问**: _（部署后更新）_
+**在线访问**: [special-octo-guide.onrender.com](https://special-octo-guide.onrender.com)  
+**GitHub**: [fufu-114514/stock-analyzer](https://github.com/fufu-114514/stock-analyzer)
 
 ## 技术栈
 
