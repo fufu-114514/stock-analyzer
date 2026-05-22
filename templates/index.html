@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 股票分析面板</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AI 股票分析面板</h1>
+        <p class="subtitle">输入股票代码，获取 AI 智能分析结果</p>
+
+        <div class="search-box">
+            <input type="text" id="tickerInput" placeholder="输入股票代码 (如 AAPL, 600519)" autofocus>
+            <button id="analyzeBtn" onclick="analyze()">开始分析</button>
+        </div>
+        <div class="hint">美股直接输入代码，A股输入6位数字 (沪股自动加.SS，深股0/3开头自动加.SZ)</div>
+
+        <div id="loading" class="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p>正在分析中，请稍候...</p>
+        </div>
+
+        <div id="error" class="error" style="display:none;"></div>
+
+        <div id="result" class="result-card" style="display:none;">
+            <div class="card-header">
+                <h2 id="resultTicker"></h2>
+                <span id="resultCompany"></span>
+            </div>
+            <div class="card-body">
+                <div class="price-row">
+                    <span class="price-label">当前价格</span>
+                    <span class="price-value" id="resultPrice"></span>
+                    <span class="price-change" id="resultChange"></span>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">周期最高</span>
+                        <span class="info-value" id="resultHigh"></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">周期最低</span>
+                        <span class="info-value" id="resultLow"></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">成交量</span>
+                        <span class="info-value" id="resultVolume"></span>
+                    </div>
+                </div>
+                <div class="analysis-section">
+                    <h3>AI 分析</h3>
+                    <p id="resultSummary"></p>
+                    <div class="badges">
+                        <span class="badge" id="resultSentiment"></span>
+                        <span class="badge" id="resultRisk"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h3>历史记录</h3>
+            <div id="historyList" class="history-list">
+                <p class="empty-hint">暂无分析记录</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
