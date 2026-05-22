@@ -1,0 +1,25 @@
+# Exported from Render on 2026-05-22T13:11:31Z
+version: "1"
+projects:
+- name: My project
+  environments:
+  - name: Production
+    services:
+    - type: web
+      name: special-octo-guide
+      runtime: python
+      repo: https://github.com/fufu-114514/special-octo-guide
+      plan: free
+      envVars:
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: DEEPSEEK_BASE_URL
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      region: oregon
+      buildCommand: pip install -r requirements.txt
+      startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+      autoDeployTrigger: commit
