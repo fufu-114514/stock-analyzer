@@ -44,9 +44,11 @@ def _parse_llm_response(text: str) -> dict:
 
 def analyze_stock(stock_data: dict) -> dict:
     """Call DeepSeek LLM to analyze stock data. Returns parsed JSON dict."""
+    from openai import OpenAI
     client = OpenAI(
         api_key=os.getenv("DEEPSEEK_API_KEY"),
         base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+        timeout=60.0,
     )
 
     stock_summary = f"""股票代码: {stock_data['ticker']}

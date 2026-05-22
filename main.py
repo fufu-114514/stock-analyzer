@@ -1,4 +1,3 @@
-import os
 import traceback
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -73,6 +72,11 @@ async def api_analyze(request: Request):
     except Exception as e:
         traceback.print_exc()
         return JSONResponse({"error": f"服务器错误: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/health")
+async def health():
+    return JSONResponse({"status": "ok"})
 
 
 @app.get("/api/history")
