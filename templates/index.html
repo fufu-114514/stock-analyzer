@@ -7,65 +7,152 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
     <div class="container">
-        <h1>AI 股票分析面板</h1>
-        <p class="subtitle">输入股票代码，获取 AI 智能分析结果</p>
+        <header class="hero">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                    <polyline points="16 7 22 7 22 13"/>
+                </svg>
+            </div>
+            <h1>AI 股票分析</h1>
+            <p>输入股票代码，DeepSeek 大模型为您解读行情</p>
+        </header>
+
+        <div class="chip-list" id="chipList">
+            <button class="chip" data-ticker="AAPL">AAPL 苹果</button>
+            <button class="chip" data-ticker="TSLA">TSLA 特斯拉</button>
+            <button class="chip" data-ticker="NVDA">NVDA 英伟达</button>
+            <button class="chip" data-ticker="600519">600519 茅台</button>
+            <button class="chip" data-ticker="000001">000001 平安</button>
+        </div>
 
         <div class="search-box">
-            <input type="text" id="tickerInput" placeholder="输入股票代码 (如 AAPL, 600519)" autofocus>
-            <button id="analyzeBtn" onclick="analyze()">开始分析</button>
+            <div class="input-wrapper">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="tickerInput" placeholder="输入股票代码 (例如 AAPL, 600519)" autofocus>
+                <kbd class="shortcut-hint">Enter</kbd>
+            </div>
+            <button id="analyzeBtn" onclick="analyze()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"/>
+                </svg>
+                开始分析
+            </button>
         </div>
-        <div class="hint">美股直接输入代码，A股输入6位数字 (沪股自动加.SS，深股0/3开头自动加.SZ)</div>
 
-        <div id="loading" class="loading" style="display:none;">
-            <div class="spinner"></div>
-            <p>正在分析中，请稍候...</p>
+        <div id="toast" class="toast" style="display:none;"></div>
+
+        <div id="loading" class="loading-card" style="display:none;">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-price"></div>
+            <div class="skeleton skeleton-row"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text short"></div>
+            <div class="loading-dot-pulse">
+                <span></span><span></span><span></span>
+            </div>
         </div>
-
-        <div id="error" class="error" style="display:none;"></div>
 
         <div id="result" class="result-card" style="display:none;">
-            <div class="card-header">
-                <h2 id="resultTicker"></h2>
-                <span id="resultCompany"></span>
-            </div>
-            <div class="card-body">
-                <div class="price-row">
-                    <span class="price-label">当前价格</span>
-                    <span class="price-value" id="resultPrice"></span>
-                    <span class="price-change" id="resultChange"></span>
-                </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">周期最高</span>
-                        <span class="info-value" id="resultHigh"></span>
+            <div class="card-top">
+                <div class="card-title-row">
+                    <div>
+                        <h2 id="resultTicker"></h2>
+                        <span id="resultCompany" class="company-name"></span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">周期最低</span>
-                        <span class="info-value" id="resultLow"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">成交量</span>
-                        <span class="info-value" id="resultVolume"></span>
-                    </div>
-                </div>
-                <div class="analysis-section">
-                    <h3>AI 分析</h3>
-                    <p id="resultSummary"></p>
-                    <div class="badges">
-                        <span class="badge" id="resultSentiment"></span>
-                        <span class="badge" id="resultRisk"></span>
+                    <div class="card-actions">
+                        <button class="icon-btn" onclick="analyze()" title="刷新">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <div class="price-section">
+                <div class="main-price">
+                    <span class="currency">¥</span>
+                    <span class="price-number" id="resultPrice">--</span>
+                </div>
+                <div class="price-meta">
+                    <span class="price-change-badge" id="resultChangeBadge"></span>
+                    <span class="price-date">实时数据</span>
+                </div>
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric">
+                    <span class="metric-icon high"></span>
+                    <div>
+                        <span class="metric-label">6月最高</span>
+                        <span class="metric-value" id="resultHigh">--</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <span class="metric-icon low"></span>
+                    <div>
+                        <span class="metric-label">6月最低</span>
+                        <span class="metric-value" id="resultLow">--</span>
+                    </div>
+                </div>
+                <div class="metric">
+                    <span class="metric-icon vol"></span>
+                    <div>
+                        <span class="metric-label">成交量</span>
+                        <span class="metric-value" id="resultVolume">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ai-section">
+                <div class="ai-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ai-icon">
+                        <path d="M12 2a4 4 0 0 1 4 4v1h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2V6a4 4 0 0 1 4-4z"/>
+                        <path d="M9 14h.01M15 14h.01M10 18h4"/>
+                    </svg>
+                    <h3>AI 分析报告</h3>
+                </div>
+                <p id="resultSummary"></p>
+                <div class="badge-row">
+                    <span class="insight-badge" id="resultSentiment"></span>
+                    <span class="insight-badge" id="resultRisk"></span>
+                </div>
+            </div>
+
+            <details class="raw-toggle">
+                <summary>查看原始数据</summary>
+                <pre id="rawData"></pre>
+            </details>
         </div>
 
-        <div class="history-section">
-            <h3>历史记录</h3>
-            <div id="historyList" class="history-list">
-                <p class="empty-hint">暂无分析记录</p>
+        <section class="history-section">
+            <div class="section-header">
+                <h3>历史分析</h3>
+                <button class="text-btn" onclick="loadHistory()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>
+                    </svg>
+                    刷新
+                </button>
             </div>
-        </div>
+            <div id="historyList" class="timeline">
+                <p class="empty-hint">暂无分析记录，搜索股票开始分析吧</p>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <span>数据来源 Yahoo Finance · AI 驱动 DeepSeek · 仅供参考不构成投资建议</span>
+        </footer>
     </div>
 
     <script src="/static/app.js"></script>

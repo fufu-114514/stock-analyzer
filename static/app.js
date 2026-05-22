@@ -1,20 +1,34 @@
-async function analyze() {
-    const input = document.getElementById('tickerInput');
-    const btn = document.getElementById('analyzeBtn');
-    const loading = document.getElementById('loading');
-    const error = document.getElementById('error');
-    const result = document.getElementById('result');
-    const ticker = input.value.trim();
+const tickerInput = document.getElementById('tickerInput');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const loadingCard = document.getElementById('loading');
+const resultCard = document.getElementById('result');
+const toastEl = document.getElementById('toast');
 
+// Chip quick-select
+document.getElementById('chipList').addEventListener('click', function(e) {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    tickerInput.value = chip.dataset.ticker;
+    analyze();
+});
+
+// Enter key
+tickerInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') analyze();
+});
+
+async function analyze() {
+    const ticker = tickerInput.value.trim();
     if (!ticker) {
-        showError('请输入股票代码');
+        showToast('请输入股票代码');
+        tickerInput.focus();
         return;
     }
 
-    btn.disabled = true;
-    loading.style.display = 'block';
-    error.style.display = 'none';
-    result.style.display = 'none';
+    analyzeBtn.disabled = true;
+    loadingCard.style.display = 'block';
+    resultCard.style.display = 'none';
+    toastEl.style.display = 'none';
 
     try {
         const resp = await fetch('/api/analyze', {
@@ -25,113 +39,161 @@ async function analyze() {
         const data = await resp.json();
 
         if (!resp.ok) {
-            showError(data.error || '分析失败');
+            showToast(data.error || '分析失败');
             return;
         }
 
         renderResult(data);
-        if (data.supabase_error) {
-            console.warn('Supabase save failed:', data.supabase_error);
-        }
+        if (data.supabase_error) console.warn('Supabase:', data.supabase_error);
         loadHistory();
     } catch (e) {
-        showError('网络错误: ' + e.message);
+        showToast('网络错误: ' + e.message);
     } finally {
-        btn.disabled = false;
-        loading.style.display = 'none';
+        analyzeBtn.disabled = false;
+        loadingCard.style.display = 'none';
     }
 }
 
 function renderResult(data) {
+    const isCn = /^\d/.test(data.ticker);
+    const prefix = isCn ? '¥' : '$';
+    const pos = data.change_percent >= 0;
+
     document.getElementById('resultTicker').textContent = data.ticker;
     document.getElementById('resultCompany').textContent = data.company_name;
-    document.getElementById('resultPrice').textContent = '¥' + data.current_price.toFixed(2);
-    document.getElementById('resultHigh').textContent = '¥' + data.period_high.toFixed(2);
-    document.getElementById('resultLow').textContent = '¥' + data.period_low.toFixed(2);
+
+    // Price with counting animation
+    animateNumber('resultPrice', data.current_price, prefix);
+    document.getElementById('resultHigh').textContent = prefix + data.period_high.toFixed(2);
+    document.getElementById('resultLow').textContent = prefix + data.period_low.toFixed(2);
     document.getElementById('resultVolume').textContent = formatVolume(data.volume);
+
+    // Change badge
+    const badge = document.getElementById('resultChangeBadge');
+    const sign = pos ? '+' : '';
+    badge.textContent = sign + data.change_percent.toFixed(2) + '%';
+    badge.className = 'price-change-badge ' + (data.change_percent > 0 ? 'up' : data.change_percent < 0 ? 'down' : 'flat');
+
+    // AI
     document.getElementById('resultSummary').textContent = data.summary;
 
-    const changeEl = document.getElementById('resultChange');
-    const change = data.change_percent;
-    changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
-    changeEl.className = 'price-change ' + (change >= 0 ? 'positive' : 'negative');
-
-    const sentimentEl = document.getElementById('resultSentiment');
-    sentimentEl.textContent = sentimentLabel(data.sentiment);
-    sentimentEl.className = 'badge ' + sentimentClass(data.sentiment);
+    const sentEl = document.getElementById('resultSentiment');
+    sentEl.textContent = sentimentLabel(data.sentiment);
+    sentEl.className = 'insight-badge ' + sentimentClass(data.sentiment);
 
     const riskEl = document.getElementById('resultRisk');
     riskEl.textContent = '风险: ' + data.risk_level;
-    riskEl.className = 'badge ' + riskClass(data.risk_level);
+    riskEl.className = 'insight-badge ' + riskClass(data.risk_level);
 
-    document.getElementById('result').style.display = 'block';
+    // Raw data
+    document.getElementById('rawData').textContent = JSON.stringify({
+        ticker: data.ticker,
+        company_name: data.company_name,
+        current_price: data.current_price,
+        change_percent: data.change_percent,
+        period_high: data.period_high,
+        period_low: data.period_low,
+        volume: data.volume,
+        summary: data.summary,
+        sentiment: data.sentiment,
+        risk_level: data.risk_level,
+    }, null, 2);
+
+    // Reset raw toggle
+    document.querySelector('.raw-toggle').open = false;
+
+    resultCard.style.display = 'block';
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function animateNumber(elId, target, prefix) {
+    const el = document.getElementById(elId);
+    const start = parseFloat(el.textContent.replace(/[^0-9.]/g, '')) || target * 0.9;
+    const duration = 600;
+    const startTime = performance.now();
+
+    function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const current = start + (target - start) * eased;
+        el.textContent = prefix + current.toFixed(2);
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
 }
 
 function sentimentLabel(s) {
-    const map = { 'Bullish': '看涨', 'Neutral': '中性', 'Bearish': '看跌' };
-    return map[s] || s;
+    return { Bullish: '看涨', Neutral: '中性', Bearish: '看跌' }[s] || s;
 }
-
 function sentimentClass(s) {
-    const map = { 'Bullish': 'bullish', 'Neutral': 'neutral', 'Bearish': 'bearish' };
-    return map[s] || 'neutral';
+    return { Bullish: 'bullish', Neutral: 'neutral', Bearish: 'bearish' }[s] || 'neutral';
 }
-
 function riskClass(r) {
-    const map = { '低': 'risk-low', '中': 'risk-mid', '高': 'risk-high' };
-    return map[r] || 'risk-mid';
+    return { '低': 'risk-low', '中': 'risk-mid', '高': 'risk-high' }[r] || 'risk-mid';
 }
 
 function formatVolume(v) {
     if (v >= 1e8) return (v / 1e8).toFixed(1) + '亿';
     if (v >= 1e4) return (v / 1e4).toFixed(1) + '万';
-    return v.toString();
+    return v.toLocaleString();
 }
 
-function showError(msg) {
-    const el = document.getElementById('error');
-    el.textContent = msg;
-    el.style.display = 'block';
+function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.style.display = 'block';
+    toastEl.style.animation = 'none';
+    void toastEl.offsetWidth;
+    toastEl.style.animation = 'slideIn 0.3s ease';
+    clearTimeout(toastEl._timeout);
+    toastEl._timeout = setTimeout(() => { toastEl.style.display = 'none'; }, 4000);
 }
 
 async function loadHistory() {
     try {
         const resp = await fetch('/api/history');
         const data = await resp.json();
-
         const list = document.getElementById('historyList');
+
         if (!data || data.length === 0) {
-            list.innerHTML = '<p class="empty-hint">暂无分析记录</p>';
+            list.innerHTML = '<p class="empty-hint">暂无分析记录，搜索股票开始分析吧</p>';
             return;
         }
 
         list.innerHTML = data.map(item => {
-            const date = new Date(item.created_at).toLocaleString('zh-CN');
-            const change = item.change_percent;
-            const sign = change >= 0 ? '+' : '';
-            return `<div class="history-item" onclick="loadFromHistory('${item.ticker}')">
-                <div>
-                    <span class="history-ticker">${item.ticker}</span>
-                    <span class="badge ${sentimentClass(item.sentiment)}">${sentimentLabel(item.sentiment)}</span>
+            const date = new Date(item.created_at);
+            const now = new Date();
+            const diff = now - date;
+            const mins = Math.floor(diff / 60000);
+            const timeStr = mins < 1 ? '刚刚' : mins < 60 ? mins + '分钟前' :
+                date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+
+            const isCn = /^\d/.test(item.ticker);
+            const prefix = isCn ? '¥' : '$';
+            const change = Number(item.change_percent);
+            const pos = change >= 0;
+            const sClass = sentimentClass(item.sentiment);
+
+            return `<div class="history-item" onclick="replay('${item.ticker}')">
+                <span class="dot ${sClass}"></span>
+                <div class="info">
+                    <span class="ticker-name">${item.ticker}</span>
+                    <span class="ticker-date">${timeStr}</span>
                 </div>
-                <div style="text-align:right;">
-                    <span class="history-price">¥${Number(item.current_price).toFixed(2)} ${sign}${Number(change).toFixed(2)}%</span>
-                    <br><span class="history-date">${date}</span>
+                <div class="right">
+                    <div class="price">${prefix}${Number(item.current_price).toFixed(2)}</div>
+                    <div class="change ${pos ? 'up' : 'down'}">${pos ? '+' : ''}${change.toFixed(2)}%</div>
                 </div>
             </div>`;
         }).join('');
     } catch (e) {
-        console.error('Load history failed:', e);
+        console.error('History:', e);
     }
 }
 
-function loadFromHistory(ticker) {
-    document.getElementById('tickerInput').value = ticker;
+function replay(ticker) {
+    tickerInput.value = ticker;
     analyze();
 }
-
-document.getElementById('tickerInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') analyze();
-});
 
 loadHistory();
